@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Sound DB Detector</title>
+  <title>Sound dB Meter</title>
   <style>
     body {
       font-family: sans-serif;
+      background: #f5f5f5;
       margin: 0;
       padding: 0;
-      background: #f5f5f5;
     }
 
     .container {
@@ -26,6 +26,7 @@
       margin: 1em 0;
       border-radius: 5px;
       overflow: hidden;
+      position: relative;
     }
 
     .level {
@@ -53,12 +54,12 @@
 </head>
 <body>
   <div class="container">
-    <h1>Sound Detector</h1>
+    <h1>Sound dB Meter</h1>
     <div class="meter">
       <div class="level" id="soundLevel"></div>
     </div>
-    <p>Current Volume: <span id="volumeValue">0</span></p>
-    <h2>Sound History</h2>
+    <p>Current Level: <span id="volumeValue">0</span> dB</p>
+    <h2>History (last 10)</h2>
     <ul id="soundHistory"></ul>
   </div>
 
@@ -76,31 +77,41 @@
       const volumeValue = document.getElementById('volumeValue');
       const soundHistoryEl = document.getElementById('soundHistory');
 
+      // Load cookie history
       const cookieData = document.cookie
         .split('; ')
         .find(row => row.startsWith('soundData='));
       const history = cookieData ? JSON.parse(decodeURIComponent(cookieData.split('=')[1])) : [];
 
-      function updateHistory(level) {
+      function updateHistory(dbLevel) {
         if (history.length >= 10) history.shift();
-        history.push(level);
+        history.push(dbLevel);
         document.cookie = `soundData=${encodeURIComponent(JSON.stringify(history))}; path=/`;
         renderHistory();
       }
 
       function renderHistory() {
-        soundHistoryEl.innerHTML = history.map(v => `<li>${v}</li>`).join('');
+        soundHistoryEl.innerHTML = history.map(v => `<li>${v} dB</li>`).join('');
       }
 
       renderHistory();
 
+      function calculateDb(volume) {
+        // Map average 0–255 to ~30–120 dB
+        const db = Math.max(1, Math.min(120, Math.round(20 * Math.log10(volume + 1))));
+        return db;
+      }
+
       function animate() {
         analyser.getByteFrequencyData(dataArray);
-        const average = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
-        const volumePercent = Math.min(100, Math.round((average / 255) * 100));
-        levelEl.style.width = volumePercent + '%';
-        volumeValue.textContent = volumePercent;
-        updateHistory(volumePercent);
+        const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
+        const dbLevel = calculateDb(avg);
+        const percent = (dbLevel / 120) * 100;
+
+        levelEl.style.width = percent + '%';
+        volumeValue.textContent = dbLevel;
+        updateHistory(dbLevel);
+
         requestAnimationFrame(animate);
       }
 
@@ -108,7 +119,7 @@
     }
 
     startAudioMeter().catch(err => {
-      alert("Microphone access is required for sound detection.");
+      alert("Microphone access is required.");
       console.error(err);
     });
   </script>
