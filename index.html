@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Sound dB Meter</title>
+  <title>Sound DB Target Meter</title>
   <style>
     body {
       font-family: sans-serif;
@@ -36,6 +36,16 @@
       transition: width 0.1s ease-out;
     }
 
+    .controls {
+      margin: 1em 0;
+    }
+
+    button {
+      font-size: 1.2em;
+      padding: 0.5em 1em;
+      margin: 0.2em;
+    }
+
     ul {
       list-style-type: none;
       padding: 0;
@@ -45,9 +55,18 @@
       margin-bottom: 5px;
     }
 
+    .warning {
+      color: red;
+      font-weight: bold;
+    }
+
     @media (max-width: 600px) {
       .container {
         padding: 0.5em;
+      }
+
+      button {
+        font-size: 1em;
       }
     }
   </style>
@@ -58,12 +77,53 @@
     <div class="meter">
       <div class="level" id="soundLevel"></div>
     </div>
-    <p>Current Level: <span id="volumeValue">0</span> dB</p>
-    <h2>History (last 10)</h2>
+    <p>Current Volume: <span id="volumeValue">0</span> dB</p>
+
+    <div class="controls">
+      <p>Target Volume: <span id="targetValue">80</span> dB</p>
+      <button onclick="adjustTarget(-1)">-</button>
+      <button onclick="adjustTarget(1)">+</button>
+    </div>
+
+    <p>Reached Count: <span id="reachCount">0</span></p>
+    <button onclick="clearHistory()">Clear History</button>
+
+    <div class="warning" id="warning"></div>
+
+    <h2>Reached History</h2>
     <ul id="soundHistory"></ul>
   </div>
 
   <script>
+    let targetDb = 80;
+    let reachCount = 0;
+    const history = [];
+
+    function adjustTarget(change) {
+      targetDb = Math.max(1, Math.min(120, targetDb + change));
+      document.getElementById("targetValue").textContent = targetDb;
+    }
+
+    function updateReachCount() {
+      document.getElementById("reachCount").textContent = reachCount;
+    }
+
+    function clearHistory() {
+      history.length = 0;
+      reachCount = 0;
+      updateReachCount();
+      document.getElementById("soundHistory").innerHTML = "";
+      document.getElementById("warning").textContent = "";
+    }
+
+    function addToHistory(dbLevel) {
+      history.push(dbLevel);
+      const list = document.getElementById("soundHistory");
+      const item = document.createElement("li");
+      item.textContent = dbLevel + " dB reached";
+      list.appendChild(item);
+    }
+
     async function startAudioMeter() {
       const audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -75,31 +135,10 @@
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       const levelEl = document.getElementById('soundLevel');
       const volumeValue = document.getElementById('volumeValue');
-      const soundHistoryEl = document.getElementById('soundHistory');
-
-      // Load cookie history
-      const cookieData = document.cookie
-        .split('; ')
-        .find(row => row.startsWith('soundData='));
-      const history = cookieData ? JSON.parse(decodeURIComponent(cookieData.split('=')[1])) : [];
-
-      function updateHistory(dbLevel) {
-        if (history.length >= 10) history.shift();
-        history.push(dbLevel);
-        document.cookie = `soundData=${encodeURIComponent(JSON.stringify(history))}; path=/`;
-        renderHistory();
-      }
-
-      function renderHistory() {
-        soundHistoryEl.innerHTML = history.map(v => `<li>${v} dB</li>`).join('');
-      }
-
-      renderHistory();
+      const warningEl = document.getElementById('warning');
 
       function calculateDb(volume) {
-        // Map average 0–255 to ~30–120 dB
-        const db = Math.max(1, Math.min(120, Math.round(20 * Math.log10(volume + 1))));
-        return db;
+        return Math.max(1, Math.min(120, Math.round(20 * Math.log10(volume + 1))));
       }
 
       function animate() {
@@ -110,7 +149,16 @@
 
         levelEl.style.width = percent + '%';
         volumeValue.textContent = dbLevel;
-        updateHistory(dbLevel);
+
+        if (dbLevel >= targetDb) {
+          if (!history.length || history[history.length - 1] !== dbLevel) {
+            reachCount++;
+            updateReachCount();
+            addToHistory(dbLevel);
+            warningEl.textContent = `Warning: Target ${targetDb} dB Reached!`;
+            setTimeout(() => warningEl.textContent = "", 1500);
+          }
+        }
 
         requestAnimationFrame(animate);
       }
