@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Sound DB Target Meter</title>
+  <title>Sound dB Alarm Meter</title>
   <style>
     body {
       font-family: sans-serif;
@@ -36,7 +36,7 @@
       transition: width 0.1s ease-out;
     }
 
-    .controls {
+    .controls, .target-controls {
       margin: 1em 0;
     }
 
@@ -44,6 +44,12 @@
       font-size: 1.2em;
       padding: 0.5em 1em;
       margin: 0.2em;
+    }
+
+    input[type="number"] {
+      font-size: 1.1em;
+      width: 80px;
+      text-align: center;
     }
 
     ul {
@@ -55,17 +61,26 @@
       margin-bottom: 5px;
     }
 
-    .warning {
-      color: red;
-      font-weight: bold;
+    .popup {
+      display: none;
+      position: fixed;
+      top: 30%;
+      left: 10%;
+      right: 10%;
+      background: white;
+      border: 2px solid red;
+      padding: 1em;
+      font-size: 1.2em;
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+      z-index: 9999;
+    }
+
+    .popup button {
+      margin-top: 10px;
     }
 
     @media (max-width: 600px) {
-      .container {
-        padding: 0.5em;
-      }
-
-      button {
+      button, input[type="number"] {
         font-size: 1em;
       }
     }
@@ -85,19 +100,30 @@
       <button onclick="adjustTarget(1)">+</button>
     </div>
 
+    <div class="target-controls">
+      <label>Set Alarm After Reaches: 
+        <input type="number" id="reachGoal" min="1" value="3"> times
+      </label>
+    </div>
+
     <p>Reached Count: <span id="reachCount">0</span></p>
     <button onclick="clearHistory()">Clear History</button>
 
-    <div class="warning" id="warning"></div>
-
     <h2>Reached History</h2>
     <ul id="soundHistory"></ul>
+  </div>
+
+  <!-- Popup -->
+  <div class="popup" id="popup">
+    <p>Alarm: Target reached the set number of times!</p>
+    <button onclick="closePopup()">OK</button>
   </div>
 
   <script>
     let targetDb = 80;
     let reachCount = 0;
     const history = [];
+    let popupShown = false;
 
     function adjustTarget(change) {
       targetDb = Math.max(1, Math.min(120, targetDb + change));
@@ -113,7 +139,8 @@
       reachCount = 0;
       updateReachCount();
       document.getElementById("soundHistory").innerHTML = "";
-      document.getElementById("warning").textContent = "";
+      document.getElementById("popup").style.display = "none";
+      popupShown = false;
     }
 
     function addToHistory(dbLevel) {
@@ -122,6 +149,18 @@
       const item = document.createElement("li");
       item.textContent = dbLevel + " dB reached";
       list.appendChild(item);
+    }
+
+    function checkPopupTrigger() {
+      const goal = parseInt(document.getElementById("reachGoal").value);
+      if (reachCount >= goal && !popupShown) {
+        document.getElementById("popup").style.display = "block";
+        popupShown = true;
+      }
+    }
+
+    function closePopup() {
+      document.getElementById("popup").style.display = "none";
     }
 
     async function startAudioMeter() {
@@ -135,7 +174,6 @@
       const dataArray = new Uint8Array(analyser.frequencyBinCount);
       const levelEl = document.getElementById('soundLevel');
       const volumeValue = document.getElementById('volumeValue');
-      const warningEl = document.getElementById('warning');
 
       function calculateDb(volume) {
         return Math.max(1, Math.min(120, Math.round(20 * Math.log10(volume + 1))));
@@ -155,8 +193,7 @@
             reachCount++;
             updateReachCount();
             addToHistory(dbLevel);
-            warningEl.textContent = `Warning: Target ${targetDb} dB Reached!`;
-            setTimeout(() => warningEl.textContent = "", 1500);
+            checkPopupTrigger();
           }
         }
 
