@@ -89,6 +89,7 @@
 <body>
   <div class="container">
     <h1>Sound dB Meter</h1>
+
     <div class="meter">
       <div class="level" id="soundLevel"></div>
     </div>
@@ -111,6 +112,8 @@
 
     <h2>Reached History</h2>
     <ul id="soundHistory"></ul>
+
+    <button onclick="startAudio()">Start Detection</button>
   </div>
 
   <!-- Popup -->
@@ -124,6 +127,7 @@
     let reachCount = 0;
     const history = [];
     let popupShown = false;
+    let lastReachedTime = 0;
 
     function adjustTarget(change) {
       targetDb = Math.max(1, Math.min(120, targetDb + change));
@@ -161,6 +165,11 @@
 
     function closePopup() {
       document.getElementById("popup").style.display = "none";
+      popupShown = false;
+    }
+
+    function calculateDb(avg) {
+      return Math.round(10 * Math.log10(avg * avg)) || 0;
     }
 
     async function startAudioMeter() {
@@ -175,10 +184,6 @@
       const levelEl = document.getElementById('soundLevel');
       const volumeValue = document.getElementById('volumeValue');
 
-      function calculateDb(volume) {
-        return Math.max(1, Math.min(120, Math.round(20 * Math.log10(volume + 1))));
-      }
-
       function animate() {
         analyser.getByteFrequencyData(dataArray);
         const avg = dataArray.reduce((a, b) => a + b, 0) / dataArray.length;
@@ -188,13 +193,13 @@
         levelEl.style.width = percent + '%';
         volumeValue.textContent = dbLevel;
 
-        if (dbLevel >= targetDb) {
-          if (!history.length || history[history.length - 1] !== dbLevel) {
-            reachCount++;
-            updateReachCount();
-            addToHistory(dbLevel);
-            checkPopupTrigger();
-          }
+        const now = Date.now();
+        if (dbLevel >= targetDb && now - lastReachedTime > 1000) {
+          reachCount++;
+          updateReachCount();
+          addToHistory(dbLevel);
+          checkPopupTrigger();
+          lastReachedTime = now;
         }
 
         requestAnimationFrame(animate);
@@ -203,10 +208,12 @@
       animate();
     }
 
-    startAudioMeter().catch(err => {
-      alert("Microphone access is required.");
-      console.error(err);
-    });
+    function startAudio() {
+      startAudioMeter().catch(err => {
+        alert("Microphone access is required.");
+        console.error(err);
+      });
+    }
   </script>
 </body>
 </html>
