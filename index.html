@@ -122,6 +122,9 @@
     <button onclick="closePopup()">OK</button>
   </div>
 
+  <!-- Alarm Sound -->
+  <audio id="alarmSound" src="alarm.mp3" preload="auto"></audio>
+
   <script>
     let targetDb = 80;
     let reachCount = 0;
@@ -160,6 +163,7 @@
       const goal = parseInt(document.getElementById("reachGoal").value);
       if (reachCount >= goal && !popupShown) {
         document.getElementById("popup").style.display = "block";
+        document.getElementById("alarmSound").play();
         popupShown = true;
       }
     }
