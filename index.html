@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Sound dB Alarm Meter</title>
+  <title>Sound dB  Meter</title>
   <style>
     body {
       font-family: sans-serif;
@@ -96,7 +96,7 @@
     <p>Current Volume: <span id="volumeValue">0</span> dB</p>
 
     <div class="controls">
-      <p>Target Volume: <span id="targetValue">80</span> dB</p>
+      <p>Target Volume: <span id="targetValue">35</span> dB</p>
       <button onclick="adjustTarget(-1)">-</button>
       <button onclick="adjustTarget(1)">+</button>
     </div>
@@ -126,7 +126,7 @@
   <audio id="alarmSound" src="alarm.mp3" preload="auto"></audio>
 
   <script>
-    let targetDb = 80;
+    let targetDb = 35;
     let reachCount = 0;
     const history = [];
     let popupShown = false;
