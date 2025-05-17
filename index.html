@@ -96,7 +96,7 @@
     <p>Current Volume: <span id="volumeValue">0</span> dB</p>
 
     <div class="controls">
-      <p>Target Volume: <span id="targetValue">35</span> dB</p>
+      <p>Target Volume: <span id="targetValue">80</span> dB</p>
       <button onclick="adjustTarget(-1)">-</button>
       <button onclick="adjustTarget(1)">+</button>
     </div>
@@ -123,7 +123,7 @@
   </div>
 
   <script>
-    let targetDb = 35;
+    let targetDb = 80;
     let reachCount = 0;
     const history = [];
     let popupShown = false;
@@ -145,13 +145,14 @@
       document.getElementById("soundHistory").innerHTML = "";
       document.getElementById("popup").style.display = "none";
       popupShown = false;
+      lastReachedTime = 0;
     }
 
     function addToHistory(dbLevel) {
       history.push(dbLevel);
       const list = document.getElementById("soundHistory");
       const item = document.createElement("li");
-      item.textContent = dbLevel + " dB reached";
+      item.textContent = `${dbLevel} dB reached`;
       list.appendChild(item);
     }
 
@@ -194,7 +195,7 @@
         volumeValue.textContent = dbLevel;
 
         const now = Date.now();
-        if (dbLevel >= targetDb && now - lastReachedTime > 1000) {
+        if (dbLevel >= targetDb && now - lastReachedTime > 20000) {
           reachCount++;
           updateReachCount();
           addToHistory(dbLevel);
